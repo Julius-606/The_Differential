@@ -1,5 +1,6 @@
 import os
 import warnings
+# Dev Note: Muting the gRPC and Log noise because we only want the Ws, no distractions.
 os.environ["GRPC_VERBOSITY"] = "ERROR"
 os.environ["GLOG_minloglevel"] = "2"
 warnings.filterwarnings("ignore")
@@ -9,20 +10,23 @@ import json
 import time
 import random
 import google.generativeai as genai
-import pandas as pd # Essential for Technical Analysis
+import pandas as pd # Essential for Technical Analysis (and tracking your Forex gains, lowkey)
 from datetime import datetime
 
 # --- ☁️ OPTIONAL IMPORTS ---
+# Dev Note: Soft failing here so the app doesn't crash if GitHub isn't invited to the party.
 try:
     from github import Github # pip install PyGithub
 except ImportError:
     Github = None # Soft fail if user hasn't installed it
 
 # --- ⚙️ SETTINGS ---
+# Dev Note: Keeping the RAM healthy by capping the session history.
 MAX_ARCHIVED_SESSIONS = 20 # Keep main config light
-MAX_VAULT_SESSIONS = 100   # Deep storage capacity
+MAX_VAULT_SESSIONS = 100   # Deep storage capacity (The "Forever" box)
 
 # --- 🔐 SECURE KEYCHAIN ---
+# Dev Note: Handling API keys like a secret trade entry. Check secrets, then env, then manual.
 GEMINI_API_KEYS = []
 try:
     raw_keys = st.secrets.get("GEMINI_KEYS")
@@ -43,6 +47,7 @@ if not GEMINI_API_KEYS:
         pass
 
 # --- 🆕 LOCAL DEV CHANGE: Manual Key Input ---
+# Dev Note: If the cloud is being stingy, we let the user manually drop the key in the sidebar.
 if not GEMINI_API_KEYS:
     with st.sidebar:
         st.warning("⚠️ No Secrets Found")
@@ -57,6 +62,7 @@ if not GEMINI_API_KEYS:
 if "key_index" not in st.session_state: st.session_state.key_index = 0
 
 # --- 🧠 BRAIN CONFIGURATION (OPTIMIZED) ---
+# Dev Note: This function is the heart. It picks the current key from our rotation.
 def configure_genai():
     """Sets the active API key based on session state index."""
     try:
@@ -69,6 +75,7 @@ def configure_genai():
 
 def resolve_model_name():
     """Scans for the best model ONCE and caches it."""
+    # Dev Note: Scanning for 1.5-flash because it's fast and cheap, just like my coffee.
     try:
         configure_genai()
         models = list(genai.list_models())
@@ -89,7 +96,7 @@ def resolve_model_name():
             return valid_models[0].replace("models/", "")
     except Exception:
         pass
-    return "gemini-1.5-flash" # Fallback
+    return "gemini-1.5-flash" # Fallback (The OG)
 
 # 1. Initialize Model Name (Only once per session)
 if "model_name" not in st.session_state:
@@ -102,6 +109,7 @@ model = genai.GenerativeModel(st.session_state.model_name)
 
 def rotate_key():
     """Switches key index and re-instantiates model without re-scanning."""
+    # Dev Note: If we hit a rate limit (Major L), we hop to the next key.
     if len(GEMINI_API_KEYS) <= 1:
         st.toast("❌ No backup keys available.", icon="🛑")
         return False
@@ -128,6 +136,7 @@ def ask_orbit(prompt):
             return model.generate_content(prompt)
         except Exception as e:
             err_msg = str(e)
+            # Dev Note: Detecting the "You're doing too much" 429 error.
             is_quota = "429" in err_msg or "quota" in err_msg.lower() or "ResourceExhausted" in err_msg
             is_auth = "403" in err_msg or "leaked" in err_msg.lower() or "API key" in err_msg
             
@@ -154,6 +163,7 @@ def ask_orbit(prompt):
 st.set_page_config(page_title="Orbit Command Center", page_icon="🩺", layout="wide")
 
 # --- ☁️ GITHUB INTEGRATION ---
+# Dev Note: This is where we handle cloud syncing. Keep it secret, keep it safe.
 def get_github_session():
     # Check if library is even available first
     if Github is None:
@@ -175,6 +185,7 @@ def get_github_session():
         return None, None
 
 def load_config():
+    # Dev Note: Fetching config. First try the cloud, then local file, then default to blank.
     g, repo = get_github_session()
     if repo:
         try:
@@ -204,6 +215,7 @@ def load_config():
         }
 
 def save_config(new_config):
+    # Dev Note: Pushing updates back to GitHub or local disk.
     g, repo = get_github_session()
     if repo:
         try:
@@ -225,6 +237,7 @@ def save_config(new_config):
         return True
 
 # --- 🏦 VAULT (DEEP STORAGE) MANAGEMENT ---
+# Dev Note: This is for the heavy stuff. We don't want config.json becoming a chunky boy.
 def load_vault():
     """Loads the heavy archive_vault.json from cloud or local."""
     g, repo = get_github_session()
@@ -247,6 +260,7 @@ def load_vault():
 
 def save_vault(vault_data, sha=None):
     """Saves the heavy vault data."""
+    # Dev Note: Update or Create logic for the deep archive.
     g, repo = get_github_session()
     if repo:
         try:
@@ -278,6 +292,7 @@ def save_vault(vault_data, sha=None):
 
 def push_to_vault(old_session):
     """Moves a session from RAM to Deep Storage."""
+    # Dev Note: The "Yeet" function. Takes an old chat and sends it to the vault.
     vault, sha = load_vault()
     
     # Insert as the 'newest' of the old stuff (index 0)
@@ -298,6 +313,7 @@ if 'config' not in st.session_state:
 config = st.session_state.config
 
 # --- 🎨 UI THEME & BACKGROUND ---
+# Dev Note: This part handles the aesthetic. We want it looking clean, not cluttered.
 def set_ui_theme(current_config):
     low_data = current_config.get('low_data_mode', False)
     accents = ["#00f2ff", "#ff0055", "#00ff9d", "#bd00ff", "#ffae00"]
@@ -306,6 +322,7 @@ def set_ui_theme(current_config):
         bg_css = "background-color: #0e1117;"
         accent_color = random.choice(accents)
     else:
+        # Dev Note: A huge collection of medical/tech vibes.
         base_urls = [
             "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d", # Tech Blue
             "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69", # Lab Fluids
@@ -341,6 +358,7 @@ def set_ui_theme(current_config):
         backgrounds = [f"{url}?auto=format&fit=crop&w=1920&q=80" for url in base_urls]
         
         current_time = time.time()
+        # Dev Note: Only updating the background every 5-30 mins to avoid visual fatigue.
         if "theme_cache" not in st.session_state:
             st.session_state.theme_cache = {
                 "bg_url": random.choice(backgrounds),
@@ -366,6 +384,7 @@ def set_ui_theme(current_config):
             background-attachment: fixed;
         """
 
+    # Dev Note: Injecting custom CSS to make it look like a sci-fi command center.
     st.markdown(
         f"""
         <style>
@@ -389,6 +408,7 @@ if config:
         st.header("👤 Commander Profile")
         st.text_input("Username", value=config.get('user_name', 'Future Doc'), disabled=True)
         st.divider()
+        # Dev Note: Difficulty levels. "Asian Parent" is the boss level.
         diffs = ["Easy (Review)", "Medium (Standard)", "Hard (Exam Prep)", "Asian Parent Expectations (Extreme)"]
         curr_diff = config.get('difficulty', "Asian Parent Expectations (Extreme)")
         idx = diffs.index(curr_diff) if curr_diff in diffs else 3
@@ -401,6 +421,7 @@ if config:
         st.header("🎯 Active Loadout")
         for unit in config.get('current_units', []): st.caption(f"• {unit}")
 
+    # Dev Note: Tab layout for the main content areas.
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["💬 Orbit Chat", "📜 History", "📝 Chaos Quiz", "📈 Progress", "📚 Manager", "⚙️ Settings"])
 
     # --- TAB 1: ACTIVE CHAT SESSION ---
@@ -409,6 +430,7 @@ if config:
         with c1:
             st.subheader("🧠 Neural Link")
         with c2:
+            # Dev Note: "New Chat" logic. Save current chat, clear buffer, rerun.
             if st.button("➕ New Chat", use_container_width=True, help="Archive current session and start fresh"):
                 current_msgs = st.session_state.messages
                 if current_msgs:
@@ -453,6 +475,7 @@ if config:
             
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
+                    # Dev Note: These personas change how the AI talks back.
                     p_map = {
                         "Standard Orbit": "You are Orbit, a helpful and precise academic assistant.",
                         "Socratic Tutor": "You are a Socratic tutor. Never give the answer directly. Ask guiding questions to lead the user to the answer.",
@@ -467,15 +490,21 @@ if config:
                     # We're simplifying the leverage here.
                     active_units = ", ".join(config.get('current_units', []))
                     curr_diff = config.get('difficulty', 'Medium')
-                    recent_context = st.session_state.messages[-6:]
+                    recent_context = st.session_state.messages[-6:] # Keep memory short for token savings.
 
+                    # 🛑 STOP-LOSS APPLIED: Taming the AI's tunnel vision 🛑
                     ctx = f"""
                     {persona_prompt}
-                    User studies: {active_units}. 
                     Difficulty: {curr_diff}.
                     Current Session Context: {recent_context}
+                    
+                    CRITICAL INSTRUCTION: Answer the specific question asked based on the current context. 
+                    Do NOT force the topic to relate to the user's general study units ({active_units}) 
+                    unless it naturally fits or is explicitly requested. Stay strictly on the trend of the prompt.
+                    
                     Current Question: {prompt}
                     """
+                    
                     response_obj = ask_orbit(ctx)
                     
                     if response_obj and response_obj.text:
@@ -490,6 +519,7 @@ if config:
 
     # --- TAB 2: ARCHIVED SESSIONS (UPDATED) ---
     with tab2:
+        # Dev Note: Displays the "Quick Access" history.
         st.subheader("🗂️ Recent History (RAM)")
         st.caption(f"Storing last {MAX_ARCHIVED_SESSIONS} sessions for quick access.")
         
@@ -516,6 +546,7 @@ if config:
         st.divider()
         
         # --- 🧊 DEEP STORAGE VAULT ---
+        # Dev Note: This pulls from the heavy vault file. Only open when needed to save data.
         st.markdown("### 🧊 Deep Archive (Vault)")
         if "show_vault" not in st.session_state: st.session_state.show_vault = False
 
@@ -549,6 +580,7 @@ if config:
 
     # --- TAB 3: CHAOS QUIZ GENERATOR (UPDATED) ---
     with tab3:
+        # Dev Note: Generates JSON questions. We use clean_text to strip the AI's markdown.
         st.subheader("📝 Generated Quiz")
         st.caption("Customize your chaos. Pick a target or let fate decide.")
         
@@ -595,6 +627,7 @@ if config:
                             st.error("AI returned silence.")
 
         with col_q2:
+            # Dev Note: Using st.form so the whole page doesn't refresh every time someone clicks a radio button.
             if 'quiz_data' in st.session_state:
                 st.info(f"**Unit:** {st.session_state['quiz_unit']} | **Questions:** {len(st.session_state['quiz_data'])}")
                 with st.form("quiz_form"):
@@ -618,7 +651,7 @@ if config:
                                 st.caption(f"ℹ️ {q['e']}")
                         
                         if 'quiz_history' not in config: config['quiz_history'] = []
-                        pnl = (score / total) * 100
+                        pnl = (score / total) * 100 # Profit and Loss? Nah, Progress and Learning.
                         
                         config['quiz_history'].append({
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -637,6 +670,7 @@ if config:
 
     # --- TAB 4: STUDY PROGRESS ---
     with tab4:
+        # Dev Note: Using Pandas to turn history into a dataframe for quick math.
         st.subheader("📈 Academic Progress")
         history = config.get('quiz_history', [])
         
@@ -655,7 +689,7 @@ if config:
             m3.metric("Highest Score", f"{best_score:.1f}%")
             
             st.caption("Score History")
-            st.line_chart(df[['pnl']]) 
+            st.line_chart(df[['pnl']]) # Visualize the grind.
             
             st.divider()
             c1, c2 = st.columns(2)
@@ -674,6 +708,7 @@ if config:
                         st.write(f"**{unit}**: {score:.1f}%")
 
     with tab5:
+        # Dev Note: Inventory management. Keeps track of what units are available to study.
         col1, col2 = st.columns(2)
         with col1:
             inv = config.get('unit_inventory', {})
@@ -702,6 +737,7 @@ if config:
             else:
                 st.info("No units found in inventory.")
         with col2:
+            # Dev Note: Simple logic to drop units we're done with.
             for unit in config.get('current_units', []):
                 if st.checkbox(f"Drop {unit}", key=unit):
                     config['current_units'].remove(unit)
@@ -711,6 +747,7 @@ if config:
 
     # --- TAB 6: SETTINGS ---
     with tab6:
+        # Dev Note: Global settings. Changes here affect the persona and the visual vibes.
         st.subheader("⚙️ System Configuration")
         
         c1, c2 = st.columns(2)
@@ -752,6 +789,7 @@ if config:
             
         st.divider()
         
+        # Dev Note: This is the reset logic. Be careful here.
         with st.expander("⚠️ Danger Zone (Reset Data)", expanded=False):
             if st.button("🔥 Clear Quiz History (Reset Progress)"):
                 config['quiz_history'] = []
