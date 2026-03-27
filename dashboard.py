@@ -213,32 +213,52 @@ def load_config():
     g, repo = get_github_session()
     if repo:
         try:
+            # 🆕 Look for the new memory file first
             contents = repo.get_contents("differential_config.json")
             decoded = contents.decoded_content.decode()
             return json.loads(decoded)
         except Exception:
-            # File might not exist yet, that's chill
-            pass
+            try:
+                # 🔙 MIGRATION: Fallback to old config.json to migrate data!
+                contents = repo.get_contents("config.json")
+                decoded = contents.decoded_content.decode()
+                old_config = json.loads(decoded)
+                # Seed the new required keys
+                if 'active_session_title' not in old_config:
+                    old_config['active_session_title'] = "New Session"
+                return old_config
+            except Exception:
+                pass # If both fail, we let local handling take over
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(script_dir, 'differential_config.json')
+    new_config_path = os.path.join(script_dir, 'differential_config.json')
+    old_config_path = os.path.join(script_dir, 'config.json')
+    
     try:
-        with open(config_path, 'r') as f: return json.load(f)
+        with open(new_config_path, 'r') as f: return json.load(f)
     except FileNotFoundError:
-        return {
-            "user_name": "Julius",
-            "difficulty": "Medium (Standard)",
-            "current_units": [],
-            "active_session": [],
-            "active_session_title": "New Session", # Added trailing title memory
-            "archived_sessions": [],
-            "quiz_history": [],
-            "interests": [],
-            "ai_persona": "Standard Differential",
-            "lock_background": False,
-            "low_data_mode": False, 
-            "unit_inventory": {"General": ["Math", "Science", "History", "Coding"]}
-        }
+        try:
+            # 🔙 MIGRATION LOCAL: Pull from the old config
+            with open(old_config_path, 'r') as f:
+                old_config = json.load(f)
+                if 'active_session_title' not in old_config:
+                    old_config['active_session_title'] = "New Session"
+                return old_config
+        except FileNotFoundError:
+            return {
+                "user_name": "Future Doc",
+                "difficulty": "Medium (Standard)",
+                "current_units": [],
+                "active_session": [],
+                "active_session_title": "New Session", # Added trailing title memory
+                "archived_sessions": [],
+                "quiz_history": [],
+                "interests": [],
+                "ai_persona": "Standard Differential",
+                "lock_background": False,
+                "low_data_mode": False, 
+                "unit_inventory": {"General": ["Math", "Science", "History", "Coding"]}
+            }
 
 def save_config(new_config):
     # Dev Note: Pushing updates back to GitHub or local disk.
@@ -278,20 +298,31 @@ def load_vault():
     g, repo = get_github_session()
     if repo:
         try:
+            # 🆕 Look for the new vault
             contents = repo.get_contents("differential_vault.json")
             decoded = contents.decoded_content.decode()
             return json.loads(decoded), contents.sha # Return SHA for updates
         except Exception:
-            # File might not exist yet, that's chill
-            return [], None
+            try:
+                # 🔙 MIGRATION: Fallback to old vault
+                contents = repo.get_contents("archive_vault.json")
+                decoded = contents.decoded_content.decode()
+                # Return None for SHA so it creates the new differential file on save
+                return json.loads(decoded), None 
+            except Exception:
+                return [], None
     
     # Local fallback
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    vault_path = os.path.join(script_dir, 'differential_vault.json')
+    new_vault_path = os.path.join(script_dir, 'differential_vault.json')
+    old_vault_path = os.path.join(script_dir, 'archive_vault.json')
     try:
-        with open(vault_path, 'r') as f: return json.load(f), None
+        with open(new_vault_path, 'r') as f: return json.load(f), None
     except FileNotFoundError:
-        return [], None
+        try:
+            with open(old_vault_path, 'r') as f: return json.load(f), None
+        except FileNotFoundError:
+            return [], None
 
 def save_vault(vault_data, sha=None):
     """Saves the heavy vault data."""
@@ -446,7 +477,7 @@ if config:
 
     with st.sidebar:
         st.header("👤 Commander Profile")
-        st.text_input("Username", value=config.get('user_name', 'Julius'), disabled=True)
+        st.text_input("Username", value=config.get('user_name', 'Future Doc'), disabled=True)
         st.divider()
         # Dev Note: Difficulty levels. "Asian Parent" is the boss level.
         diffs = ["Easy (Review)", "Medium (Standard)", "Hard (Exam Prep)", "Asian Parent Expectations (Extreme)"]
