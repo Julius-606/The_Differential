@@ -197,7 +197,6 @@ def get_github_session():
     repo_name = st.secrets.get("GITHUB_REPO")
     
     if not token or not repo_name:
-        # st.sidebar.error("❌ GitHub Secrets Missing!") # Muted for local dev
         return None, None
     
     try:
@@ -209,65 +208,62 @@ def get_github_session():
         return None, None
 
 def load_config():
-    # Dev Note: Fetching config. First try the cloud, then local file, then default to blank.
+    # Dev Note: We reverted to config.json to preserve persistent memory in the cloud sandbox!
     g, repo = get_github_session()
     if repo:
         try:
-            # 🆕 Look for the new memory file first
-            contents = repo.get_contents("differential_config.json")
+            contents = repo.get_contents("config.json")
             decoded = contents.decoded_content.decode()
-            return json.loads(decoded)
+            config_data = json.loads(decoded)
+            
+            # Liquidity Sweep: Migrating old chat formats to the new active session if needed
+            if 'active_session_title' not in config_data:
+                config_data['active_session_title'] = "New Session"
+            if 'chat_history' in config_data and not config_data.get('active_session'):
+                config_data['active_session'] = config_data['chat_history']
+                
+            return config_data
         except Exception:
-            try:
-                # 🔙 MIGRATION: Fallback to old config.json to migrate data!
-                contents = repo.get_contents("config.json")
-                decoded = contents.decoded_content.decode()
-                old_config = json.loads(decoded)
-                # Seed the new required keys
-                if 'active_session_title' not in old_config:
-                    old_config['active_session_title'] = "New Session"
-                return old_config
-            except Exception:
-                pass # If both fail, we let local handling take over
+            pass # If github fetch fails, fall back to local
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    new_config_path = os.path.join(script_dir, 'differential_config.json')
-    old_config_path = os.path.join(script_dir, 'config.json')
+    config_path = os.path.join(script_dir, 'config.json')
     
     try:
-        with open(new_config_path, 'r') as f: return json.load(f)
+        with open(config_path, 'r') as f: 
+            config_data = json.load(f)
+            
+            # Liquidity Sweep: Migrating old chat formats locally
+            if 'active_session_title' not in config_data:
+                config_data['active_session_title'] = "New Session"
+            if 'chat_history' in config_data and not config_data.get('active_session'):
+                config_data['active_session'] = config_data['chat_history']
+                
+            return config_data
     except FileNotFoundError:
-        try:
-            # 🔙 MIGRATION LOCAL: Pull from the old config
-            with open(old_config_path, 'r') as f:
-                old_config = json.load(f)
-                if 'active_session_title' not in old_config:
-                    old_config['active_session_title'] = "New Session"
-                return old_config
-        except FileNotFoundError:
-            return {
-                "user_name": "Future Doc",
-                "difficulty": "Medium (Standard)",
-                "current_units": [],
-                "active_session": [],
-                "active_session_title": "New Session", # Added trailing title memory
-                "archived_sessions": [],
-                "quiz_history": [],
-                "interests": [],
-                "ai_persona": "Standard Differential",
-                "lock_background": False,
-                "low_data_mode": False, 
-                "unit_inventory": {"General": ["Math", "Science", "History", "Coding"]}
-            }
+        # Default fresh account if no config exists anywhere
+        return {
+            "user_name": "Future Doc",
+            "difficulty": "Medium (Standard)",
+            "current_units": [],
+            "active_session": [],
+            "active_session_title": "New Session",
+            "archived_sessions": [],
+            "quiz_history": [],
+            "interests": [],
+            "ai_persona": "Standard Differential",
+            "lock_background": False,
+            "low_data_mode": False, 
+            "unit_inventory": {"General": ["Math", "Science", "History", "Coding"]}
+        }
 
 def save_config(new_config):
-    # Dev Note: Pushing updates back to GitHub or local disk.
+    # Dev Note: Pushing updates back to config.json so the Sandbox tracks it!
     g, repo = get_github_session()
     if repo:
         try:
-            # Try to update an existing file first
             try:
-                contents = repo.get_contents("differential_config.json")
+                contents = repo.get_contents("config.json")
                 repo.update_file(
                     path=contents.path,
                     message="🤖 The Differential Session Sync",
@@ -275,9 +271,9 @@ def save_config(new_config):
                     sha=contents.sha
                 )
             except Exception:
-                # If it 404s because the repo is fresh, we CREATE instead of crashing!
+                # 404 handler: Create the file if the repo is empty
                 repo.create_file(
-                    path="differential_config.json",
+                    path="config.json",
                     message="🤖 Init The Differential Config",
                     content=json.dumps(new_config, indent=4)
                 )
@@ -287,62 +283,45 @@ def save_config(new_config):
             return False
     else:
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(script_dir, 'differential_config.json')
+        config_path = os.path.join(script_dir, 'config.json')
         with open(config_path, 'w') as f: json.dump(new_config, f, indent=4)
         return True
 
 # --- 🏦 VAULT (DEEP STORAGE) MANAGEMENT ---
-# Dev Note: This is for the heavy stuff. We don't want config.json becoming a chunky boy.
 def load_vault():
     """Loads the heavy archive_vault.json from cloud or local."""
     g, repo = get_github_session()
     if repo:
         try:
-            # 🆕 Look for the new vault
-            contents = repo.get_contents("differential_vault.json")
+            contents = repo.get_contents("archive_vault.json")
             decoded = contents.decoded_content.decode()
-            return json.loads(decoded), contents.sha # Return SHA for updates
+            return json.loads(decoded), contents.sha 
         except Exception:
-            try:
-                # 🔙 MIGRATION: Fallback to old vault
-                contents = repo.get_contents("archive_vault.json")
-                decoded = contents.decoded_content.decode()
-                # Return None for SHA so it creates the new differential file on save
-                return json.loads(decoded), None 
-            except Exception:
-                return [], None
-    
-    # Local fallback
+            return [], None 
+            
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    new_vault_path = os.path.join(script_dir, 'differential_vault.json')
-    old_vault_path = os.path.join(script_dir, 'archive_vault.json')
+    vault_path = os.path.join(script_dir, 'archive_vault.json')
     try:
-        with open(new_vault_path, 'r') as f: return json.load(f), None
+        with open(vault_path, 'r') as f: return json.load(f), None
     except FileNotFoundError:
-        try:
-            with open(old_vault_path, 'r') as f: return json.load(f), None
-        except FileNotFoundError:
-            return [], None
+        return [], None
 
 def save_vault(vault_data, sha=None):
     """Saves the heavy vault data."""
-    # Dev Note: Update or Create logic for the deep archive.
     g, repo = get_github_session()
     if repo:
         try:
             try:
-                # Force check if it exists just to be extra safe
-                contents = repo.get_contents("differential_vault.json")
+                contents = repo.get_contents("archive_vault.json")
                 repo.update_file(
-                    path="differential_vault.json",
+                    path="archive_vault.json",
                     message="🧊 Deep Freeze Archive Update",
                     content=json.dumps(vault_data, indent=4),
                     sha=contents.sha
                 )
             except Exception:
-                # Create it if it wasn't found (the 404 fix)
                 repo.create_file(
-                    path="differential_vault.json",
+                    path="archive_vault.json",
                     message="🧊 Init Deep Freeze",
                     content=json.dumps(vault_data, indent=4)
                 )
@@ -351,24 +330,17 @@ def save_vault(vault_data, sha=None):
             st.error(f"❌ Vault Save Failed: {e}")
             return False
     else:
-        # Local
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        vault_path = os.path.join(script_dir, 'differential_vault.json')
+        vault_path = os.path.join(script_dir, 'archive_vault.json')
         with open(vault_path, 'w') as f: json.dump(vault_data, f, indent=4)
         return True
 
 def push_to_vault(old_session):
     """Moves a session from RAM to Deep Storage."""
-    # Dev Note: The "Yeet" function. Takes an old chat and sends it to the vault.
     vault, sha = load_vault()
-    
-    # Insert as the 'newest' of the old stuff (index 0)
     vault.insert(0, old_session)
-    
-    # Cap at MAX_VAULT_SESSIONS (100)
     if len(vault) > MAX_VAULT_SESSIONS:
         vault = vault[:MAX_VAULT_SESSIONS]
-        
     save_vault(vault, sha)
 
 st.title("👩‍⚕️ The Differential: Your med assistant")
