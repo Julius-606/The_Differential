@@ -159,6 +159,29 @@ def ask_differential(prompt):
             return None
     return None
 
+# --- DYNAMIC CHAT TITLING (TRAILING PROFIT LOGIC 📈) ---
+def generate_dynamic_title(messages, current_title):
+    """
+    Trailing topic logic. Updates the title dynamically as the chat deepens.
+    To avoid blowing the rate limits, we only check on the 1st msg, and every 3rd msg.
+    """
+    user_count = sum(1 for m in messages if m['role'] == 'user')
+    
+    if user_count == 1:
+        # First entry: Get a base title
+        prompt = f"Summarize this medical query into a concise 2-5 word topic title. Query: {messages[0]['content']}\nReturn ONLY the title string, no quotes or markdown."
+        res = ask_differential(prompt)
+        return res.text.strip(' "\'') if res and res.text else "New Session"
+        
+    elif user_count > 1 and user_count % 3 == 0:
+        # Trend check: Has the topic shifted?
+        recent = str([m['content'] for m in messages[-4:]])
+        prompt = f"Current Chat Title: '{current_title}'.\nRecent chat context: {recent}\nHas the focus significantly shifted or expanded to a new specific medical topic? If yes, append it using ' / ' (e.g., 'Anatomy of chest / Heart Pathophysiology'). If not, return the exact Current Chat Title. Return ONLY the title string, no quotes, no markdown."
+        res = ask_differential(prompt)
+        return res.text.strip(' "\'') if res and res.text else current_title
+        
+    return current_title
+
 # --- PAGE SETUP ---
 # Update: Renamed the app and changed the icon to match the new vibes 👩‍⚕️
 st.set_page_config(page_title="The Differential", page_icon="👩‍⚕️", layout="wide")
@@ -206,6 +229,7 @@ def load_config():
             "difficulty": "Medium (Standard)",
             "current_units": [],
             "active_session": [],
+            "active_session_title": "New Session", # Added trailing title memory
             "archived_sessions": [],
             "quiz_history": [],
             "interests": [],
@@ -312,6 +336,10 @@ if 'config' not in st.session_state:
     st.session_state.config = load_config()
 
 config = st.session_state.config
+
+# Make sure we have the active title loaded in memory
+if 'active_chat_title' not in st.session_state:
+    st.session_state.active_chat_title = config.get('active_session_title', 'New Session')
 
 # --- 🎨 UI THEME & BACKGROUND ---
 # Dev Note: This part handles the aesthetic. We want it looking clean, not cluttered.
@@ -429,7 +457,7 @@ if config:
     with tab1:
         c1, c2 = st.columns([5, 1])
         with c1:
-            st.subheader("🧠 Neural Link")
+            st.subheader(f"🧠 {st.session_state.active_chat_title}")
         with c2:
             # Dev Note: "New Chat" logic. Save current chat, clear buffer, rerun.
             if st.button("➕ New Chat", use_container_width=True, help="Archive current session and start fresh"):
@@ -437,8 +465,11 @@ if config:
                 if current_msgs:
                     if 'archived_sessions' not in config: config['archived_sessions'] = []
                     
-                    first_user_msg = next((m['content'] for m in current_msgs if m['role'] == 'user'), "Empty Session")
-                    summary = (first_user_msg[:40] + '...') if len(first_user_msg) > 40 else first_user_msg
+                    # Instead of grabbing the first 40 chars, we use the trailing AI title!
+                    summary = st.session_state.active_chat_title
+                    if summary == "New Session": # Fallback just in case
+                        first_user_msg = next((m['content'] for m in current_msgs if m['role'] == 'user'), "Empty Session")
+                        summary = (first_user_msg[:40] + '...') if len(first_user_msg) > 40 else first_user_msg
                     
                     session_archive = {
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -458,6 +489,8 @@ if config:
                         st.toast("Oldest chat moved to Vault 🏦", icon="🧊")
                     
                     config['active_session'] = []
+                    config['active_session_title'] = "New Session"
+                    st.session_state.active_chat_title = "New Session"
                     
                     save_config(config)
                     st.session_state.config = config
@@ -510,9 +543,18 @@ if config:
                         st.markdown(response_obj.text)
                         st.session_state.messages.append({"role": "assistant", "content": response_obj.text})
                         
+                        # --- TRAILING TITLE UPDATE ---
+                        with st.spinner("Logging topic trend..."):
+                            new_title = generate_dynamic_title(st.session_state.messages, st.session_state.active_chat_title)
+                            st.session_state.active_chat_title = new_title
+                            config['active_session_title'] = new_title
+
                         config['active_session'] = st.session_state.messages
                         save_config(config)
                         st.session_state.config = config
+                        
+                        # Sneaky rerun to update the title UI at the top instantly
+                        st.rerun()
                     else:
                         st.error("⚠️ Connection Interrupted.")
 
@@ -549,8 +591,10 @@ if config:
                         # 3. Bag up the CURRENT chat and put it into the archive (if it's not empty)
                         current_msgs = st.session_state.messages
                         if current_msgs:
-                            first_user_msg = next((m['content'] for m in current_msgs if m['role'] == 'user'), "Empty Session")
-                            summary = (first_user_msg[:40] + '...') if len(first_user_msg) > 40 else first_user_msg
+                            summary = st.session_state.active_chat_title
+                            if summary == "New Session":
+                                first_user_msg = next((m['content'] for m in current_msgs if m['role'] == 'user'), "Empty Session")
+                                summary = (first_user_msg[:40] + '...') if len(first_user_msg) > 40 else first_user_msg
                             
                             session_archive = {
                                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -563,6 +607,8 @@ if config:
                         # 4. Swap the active session to our selected one
                         st.session_state.messages = selected_session['messages']
                         config['active_session'] = selected_session['messages']
+                        st.session_state.active_chat_title = selected_session['summary']
+                        config['active_session_title'] = selected_session['summary']
                         
                         # Manage overflow just in case the history gets too heavy
                         while len(config['archived_sessions']) > MAX_ARCHIVED_SESSIONS:
@@ -613,8 +659,10 @@ if config:
                             
                             current_msgs = st.session_state.messages
                             if current_msgs:
-                                first_user_msg = next((m['content'] for m in current_msgs if m['role'] == 'user'), "Empty Session")
-                                summary = (first_user_msg[:40] + '...') if len(first_user_msg) > 40 else first_user_msg
+                                summary = st.session_state.active_chat_title
+                                if summary == "New Session":
+                                    first_user_msg = next((m['content'] for m in current_msgs if m['role'] == 'user'), "Empty Session")
+                                    summary = (first_user_msg[:40] + '...') if len(first_user_msg) > 40 else first_user_msg
                                 
                                 session_archive = {
                                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -626,6 +674,8 @@ if config:
                                 
                             st.session_state.messages = selected_session['messages']
                             config['active_session'] = selected_session['messages']
+                            st.session_state.active_chat_title = selected_session['summary']
+                            config['active_session_title'] = selected_session['summary']
                             
                             save_vault(vault_data, vault_sha)
                             save_config(config)
