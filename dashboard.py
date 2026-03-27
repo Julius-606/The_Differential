@@ -14,19 +14,16 @@ import pandas as pd # Essential for Technical Analysis (and tracking your Forex 
 from datetime import datetime
 
 # --- ☁️ OPTIONAL IMPORTS ---
-# Dev Note: Soft failing here so the app doesn't crash if GitHub isn't invited to the party.
 try:
-    from github import Github # pip install PyGithub
+    from github import Github 
 except ImportError:
-    Github = None # Soft fail if user hasn't installed it
+    Github = None 
 
 # --- ⚙️ SETTINGS ---
-# Dev Note: Keeping the RAM healthy by capping the session history.
-MAX_ARCHIVED_SESSIONS = 20 # Keep main config light
-MAX_VAULT_SESSIONS = 100   # Deep storage capacity (The "Forever" box)
+MAX_ARCHIVED_SESSIONS = 20 
+MAX_VAULT_SESSIONS = 100   
 
 # --- 🔐 SECURE KEYCHAIN ---
-# Dev Note: Handling API keys like a secret trade entry. Check secrets, then env, then manual.
 GEMINI_API_KEYS = []
 try:
     raw_keys = st.secrets.get("GEMINI_KEYS")
@@ -46,8 +43,6 @@ if not GEMINI_API_KEYS:
     except Exception:
         pass
 
-# --- 🆕 LOCAL DEV CHANGE: Manual Key Input ---
-# Dev Note: If the cloud is being stingy, we let the user manually drop the key in the sidebar.
 if not GEMINI_API_KEYS:
     with st.sidebar:
         st.warning("⚠️ No Secrets Found")
@@ -61,12 +56,9 @@ if not GEMINI_API_KEYS:
 
 if "key_index" not in st.session_state: st.session_state.key_index = 0
 
-# --- 🧠 BRAIN CONFIGURATION (OPTIMIZED) ---
-# Dev Note: This function is the heart. It picks the current key from our rotation.
+# --- 🧠 BRAIN CONFIGURATION ---
 def configure_genai():
-    """Sets the active API key based on session state index."""
     try:
-        # Wrap index safety
         idx = st.session_state.key_index % len(GEMINI_API_KEYS)
         current_key = GEMINI_API_KEYS[idx]
         genai.configure(api_key=current_key)
@@ -74,131 +66,87 @@ def configure_genai():
     except Exception: return False
 
 def resolve_model_name():
-    """Scans for the best model ONCE and caches it."""
-    # Dev Note: Scanning for 1.5-flash because it's fast and cheap, just like my coffee.
     try:
         configure_genai()
         models = list(genai.list_models())
         valid_models = [m.name for m in models if 'generateContent' in m.supported_generation_methods]
-        
-        # Priority 1: Flash 1.5
         for m in valid_models:
             if 'gemini-1.5-flash' in m and 'latest' not in m and 'exp' not in m:
                 return m.replace("models/", "")
-        
-        # Priority 2: Any Flash
         for m in valid_models:
              if 'flash' in m and 'gemini-2' not in m and 'exp' not in m:
                 return m.replace("models/", "")
-
-        # Priority 3: Anything else
         if valid_models:
             return valid_models[0].replace("models/", "")
     except Exception:
         pass
-    return "gemini-1.5-flash" # Fallback (The OG)
+    return "gemini-1.5-flash" 
 
-# 1. Initialize Model Name (Only once per session)
 if "model_name" not in st.session_state:
     with st.spinner("🩺 Checking Vitals..."):
         st.session_state.model_name = resolve_model_name()
 
-# 2. Configure & Instantiate (Runs on every rerun)
 configure_genai()
 model = genai.GenerativeModel(st.session_state.model_name)
 
 def rotate_key():
-    """Switches key index and re-instantiates model without re-scanning."""
-    # Dev Note: If we hit a rate limit (Major L), we hop to the next key.
     if len(GEMINI_API_KEYS) <= 1:
         st.toast("❌ No backup keys available.", icon="🛑")
         return False
-
     st.session_state.key_index = (st.session_state.key_index + 1) % len(GEMINI_API_KEYS)
-    
-    # Re-configure global genai with new key
     configure_genai()
-    
-    # Update global model object
     global model
     model = genai.GenerativeModel(st.session_state.model_name)
-    
     st.toast(f"🔄 Swapped to Key #{st.session_state.key_index + 1}", icon="🔑")
     return True
 
 def ask_differential(prompt):
     global model
-    # Retry loop: Try all keys + 1 extra attempt
     max_retries = len(GEMINI_API_KEYS) + 1
-    
     for attempt in range(max_retries):
         try:
             return model.generate_content(prompt)
         except Exception as e:
             err_msg = str(e)
-            # Dev Note: Detecting the "You're doing too much" 429 error.
             is_quota = "429" in err_msg or "quota" in err_msg.lower() or "ResourceExhausted" in err_msg
             is_auth = "403" in err_msg or "leaked" in err_msg.lower() or "API key" in err_msg
-            
             if is_quota or is_auth:
-                 reason = "Quota" if is_quota else "Auth"
-                 # st.toast(f"⚠️ Key #{st.session_state.key_index+1} Failed ({reason}). Rotating...", icon="🔥")
                  if rotate_key():
-                    time.sleep(1) # Short breather
+                    time.sleep(1) 
                     continue
                  else:
                     return None
-            
-            # Non-critical error (Server side 500 etc)
             print(f"❌ Chat Error: {err_msg}")
-            # Optional: retry once for server errors without rotating
             if attempt < max_retries - 1:
                 time.sleep(1)
                 continue
-                
             return None
     return None
 
-# --- DYNAMIC CHAT TITLING (TRAILING PROFIT LOGIC 📈) ---
 def generate_dynamic_title(messages, current_title):
-    """
-    Trailing topic logic. Updates the title dynamically as the chat deepens.
-    To avoid blowing the rate limits, we only check on the 1st msg, and every 3rd msg.
-    """
     user_count = sum(1 for m in messages if m['role'] == 'user')
-    
     if user_count == 1:
-        # First entry: Get a base title
         prompt = f"Summarize this medical query into a concise 2-5 word topic title. Query: {messages[0]['content']}\nReturn ONLY the title string, no quotes or markdown."
         res = ask_differential(prompt)
         return res.text.strip(' "\'') if res and res.text else "New Session"
-        
     elif user_count > 1 and user_count % 3 == 0:
-        # Trend check: Has the topic shifted?
         recent = str([m['content'] for m in messages[-4:]])
         prompt = f"Current Chat Title: '{current_title}'.\nRecent chat context: {recent}\nHas the focus significantly shifted or expanded to a new specific medical topic? If yes, append it using ' / ' (e.g., 'Anatomy of chest / Heart Pathophysiology'). If not, return the exact Current Chat Title. Return ONLY the title string, no quotes, no markdown."
         res = ask_differential(prompt)
         return res.text.strip(' "\'') if res and res.text else current_title
-        
     return current_title
 
-# --- PAGE SETUP ---
-# Update: Renamed the app and changed the icon to match the new vibes 👩‍⚕️
 st.set_page_config(page_title="The Differential", page_icon="👩‍⚕️", layout="wide")
 
-# --- ☁️ GITHUB INTEGRATION ---
-# Dev Note: This is where we handle cloud syncing. Keep it secret, keep it safe.
+# --- ☁️ GITHUB INTEGRATION (NOW WITH ANTI-GASLIGHTING TECH) ---
 def get_github_session():
-    # Check if library is even available first
     if Github is None:
         return None, None
-
     token = st.secrets.get("GITHUB_TOKEN") or st.secrets.get("GITHUB_KEYS")
     repo_name = st.secrets.get("GITHUB_REPO")
     
     if not token or not repo_name:
         return None, None
-    
     try:
         g = Github(token)
         repo = g.get_repo(repo_name)
@@ -208,40 +156,36 @@ def get_github_session():
         return None, None
 
 def load_config():
-    # Dev Note: We reverted to config.json to preserve persistent memory in the cloud sandbox!
     g, repo = get_github_session()
     if repo:
         try:
             contents = repo.get_contents("config.json")
             decoded = contents.decoded_content.decode()
             config_data = json.loads(decoded)
+            st.toast("✅ Config loaded from Cloud!", icon="☁️")
             
-            # Liquidity Sweep: Migrating old chat formats to the new active session if needed
             if 'active_session_title' not in config_data:
                 config_data['active_session_title'] = "New Session"
             if 'chat_history' in config_data and not config_data.get('active_session'):
                 config_data['active_session'] = config_data['chat_history']
                 
             return config_data
-        except Exception:
-            pass # If github fetch fails, fall back to local
+        except Exception as e:
+            # 🛑 NO MORE SILENT FAILURES! This tells us if GitHub rejected the read.
+            st.sidebar.warning(f"⚠️ Cloud Fetch Failed (Trading on Demo/Local): {e}")
+            pass 
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, 'config.json')
-    
     try:
         with open(config_path, 'r') as f: 
             config_data = json.load(f)
-            
-            # Liquidity Sweep: Migrating old chat formats locally
             if 'active_session_title' not in config_data:
                 config_data['active_session_title'] = "New Session"
             if 'chat_history' in config_data and not config_data.get('active_session'):
                 config_data['active_session'] = config_data['chat_history']
-                
             return config_data
     except FileNotFoundError:
-        # Default fresh account if no config exists anywhere
         return {
             "user_name": "Future Doc",
             "difficulty": "Medium (Standard)",
@@ -258,7 +202,6 @@ def load_config():
         }
 
 def save_config(new_config):
-    # Dev Note: Pushing updates back to config.json so the Sandbox tracks it!
     g, repo = get_github_session()
     if repo:
         try:
@@ -270,16 +213,20 @@ def save_config(new_config):
                     content=json.dumps(new_config, indent=4),
                     sha=contents.sha
                 )
-            except Exception:
-                # 404 handler: Create the file if the repo is empty
+                st.toast("☁️ Cloud Save Successful!", icon="✅")
+            except Exception as e:
+                # If it doesn't exist, we try to create it.
+                st.toast(f"File missing, attempting to create... {e}", icon="🔄")
                 repo.create_file(
                     path="config.json",
                     message="🤖 Init The Differential Config",
                     content=json.dumps(new_config, indent=4)
                 )
+                st.toast("☁️ Cloud File Created!", icon="✅")
             return True
         except Exception as e:
-            st.error(f"❌ Cloud Save Failed: {e}")
+            # 🛑 THE DREADED 404 TRAPPER
+            st.error(f"❌ Cloud Save Failed: {e}. Check your token permissions (Needs 'Contents: Write') or ensure the repo isn't completely empty.")
             return False
     else:
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -289,7 +236,6 @@ def save_config(new_config):
 
 # --- 🏦 VAULT (DEEP STORAGE) MANAGEMENT ---
 def load_vault():
-    """Loads the heavy archive_vault.json from cloud or local."""
     g, repo = get_github_session()
     if repo:
         try:
@@ -307,7 +253,6 @@ def load_vault():
         return [], None
 
 def save_vault(vault_data, sha=None):
-    """Saves the heavy vault data."""
     g, repo = get_github_session()
     if repo:
         try:
@@ -336,7 +281,6 @@ def save_vault(vault_data, sha=None):
         return True
 
 def push_to_vault(old_session):
-    """Moves a session from RAM to Deep Storage."""
     vault, sha = load_vault()
     vault.insert(0, old_session)
     if len(vault) > MAX_VAULT_SESSIONS:
@@ -345,18 +289,15 @@ def push_to_vault(old_session):
 
 st.title("👩‍⚕️ The Differential: Your med assistant")
 
-# Load config
 if 'config' not in st.session_state:
     st.session_state.config = load_config()
 
 config = st.session_state.config
 
-# Make sure we have the active title loaded in memory
 if 'active_chat_title' not in st.session_state:
     st.session_state.active_chat_title = config.get('active_session_title', 'New Session')
 
 # --- 🎨 UI THEME & BACKGROUND ---
-# Dev Note: This part handles the aesthetic. We want it looking clean, not cluttered.
 def set_ui_theme(current_config):
     low_data = current_config.get('low_data_mode', False)
     accents = ["#00f2ff", "#ff0055", "#00ff9d", "#bd00ff", "#ffae00"]
@@ -365,43 +306,16 @@ def set_ui_theme(current_config):
         bg_css = "background-color: #0e1117;"
         accent_color = random.choice(accents)
     else:
-        # Dev Note: A huge collection of medical/tech vibes.
         base_urls = [
-            "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d", # Tech Blue
-            "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69", # Lab Fluids
-            "https://images.unsplash.com/photo-1581093458791-9f302e683057", # Dark Dentist/Tech
-            "https://images.unsplash.com/photo-1516549655169-df83a0674f66", # Stethoscope Dark
-            "https://images.unsplash.com/photo-1505751172876-fa1923c5c528", # Doctor coat abstract
-            "https://images.unsplash.com/photo-1584036561566-b93a901e3bae", # Molecular
-            "https://images.unsplash.com/photo-1579684385261-d030917ac686", # Lab samples
-            "https://images.unsplash.com/photo-1559757609-f31090331def",   # Blue petri dish
-            "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b", # Microscope dark
-            "https://images.unsplash.com/photo-1530210124550-912dc1381cb8", # Heart rate monitor
-            "https://images.unsplash.com/photo-1551076805-e1869033e561",   # Robotic surgery arm
-            "https://images.unsplash.com/photo-1576086213369-97a306d36557", # MRI Scan
-            "https://images.unsplash.com/photo-1581595221898-9d493d43c5e7", # Nurse working
-            "https://images.unsplash.com/photo-1583324113626-70df0f4deaab", # Virus/Science
-            "https://images.unsplash.com/photo-1518152006812-edab29b06cc4", # Dark EKG
-            "https://images.unsplash.com/photo-1583912267652-3c82ea98c763", # Viral cells render
-            "https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b", # Industrial/Medical Light
-            "https://images.unsplash.com/photo-1580481072645-022f9a6dbf27", # DNA Strand
-            "https://images.unsplash.com/photo-1579154204601-01588f351e67", # Modern Lab
-            "https://images.unsplash.com/photo-1530497610204-3c4286d41b78", # Skeleton/Anatomy
-            "https://images.unsplash.com/photo-1530026405186-ed1f139313f8", # Digital DNA
-            "https://images.unsplash.com/photo-1576091358783-a212ec293ff3", # Medical Gloves
-            "https://images.unsplash.com/photo-1551884170-09fb70a3a2ed",   # Pharmacy Art
-            "https://images.unsplash.com/photo-1584362917165-526a968579e8", # Test Tubes
-            "https://images.unsplash.com/photo-1582719508461-905c673771fd", # Virus Abstract
-            "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158", # Laptop/Data/Medical
-            "https://images.unsplash.com/photo-1519494006885-e2420c4ac12e", # Hospital Room
-            "https://images.unsplash.com/photo-1532094349884-543bc11b234d", # Pipette
-            "https://images.unsplash.com/photo-1576670156567-c3679806543b", # Nurse/Doctor writing
-            "https://images.unsplash.com/photo-1584036518754-80c32808e114", # Medical Research
+            "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d",
+            "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69",
+            "https://images.unsplash.com/photo-1581093458791-9f302e683057",
+            "https://images.unsplash.com/photo-1516549655169-df83a0674f66",
+            "https://images.unsplash.com/photo-1505751172876-fa1923c5c528",
         ]
         backgrounds = [f"{url}?auto=format&fit=crop&w=1920&q=80" for url in base_urls]
         
         current_time = time.time()
-        # Dev Note: Only updating the background every 5-30 mins to avoid visual fatigue.
         if "theme_cache" not in st.session_state:
             st.session_state.theme_cache = {
                 "bg_url": random.choice(backgrounds),
@@ -427,7 +341,6 @@ def set_ui_theme(current_config):
             background-attachment: fixed;
         """
 
-    # Dev Note: Injecting custom CSS to make it look like a sci-fi command center.
     st.markdown(
         f"""
         <style>
@@ -451,7 +364,6 @@ if config:
         st.header("👤 Commander Profile")
         st.text_input("Username", value=config.get('user_name', 'Future Doc'), disabled=True)
         st.divider()
-        # Dev Note: Difficulty levels. "Asian Parent" is the boss level.
         diffs = ["Easy (Review)", "Medium (Standard)", "Hard (Exam Prep)", "Asian Parent Expectations (Extreme)"]
         curr_diff = config.get('difficulty', "Asian Parent Expectations (Extreme)")
         idx = diffs.index(curr_diff) if curr_diff in diffs else 3
@@ -464,7 +376,6 @@ if config:
         st.header("🎯 Active Loadout")
         for unit in config.get('current_units', []): st.caption(f"• {unit}")
 
-    # Dev Note: Tab layout for the main content areas.
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["💬 The Differential Chat", "📜 History", "📝 Chaos Quiz", "📈 Progress", "📚 Manager", "⚙️ Settings"])
 
     # --- TAB 1: ACTIVE CHAT SESSION ---
@@ -473,15 +384,13 @@ if config:
         with c1:
             st.subheader(f"🧠 {st.session_state.active_chat_title}")
         with c2:
-            # Dev Note: "New Chat" logic. Save current chat, clear buffer, rerun.
             if st.button("➕ New Chat", use_container_width=True, help="Archive current session and start fresh"):
                 current_msgs = st.session_state.messages
                 if current_msgs:
                     if 'archived_sessions' not in config: config['archived_sessions'] = []
                     
-                    # Instead of grabbing the first 40 chars, we use the trailing AI title!
                     summary = st.session_state.active_chat_title
-                    if summary == "New Session": # Fallback just in case
+                    if summary == "New Session": 
                         first_user_msg = next((m['content'] for m in current_msgs if m['role'] == 'user'), "Empty Session")
                         summary = (first_user_msg[:40] + '...') if len(first_user_msg) > 40 else first_user_msg
                     
@@ -491,12 +400,9 @@ if config:
                         "messages": current_msgs
                     }
                     
-                    # 1. Add to local recent history
                     config['archived_sessions'].insert(0, session_archive)
                     
-                    # 2. OVERFLOW LOGIC: Yeet old sessions to the Vault
                     while len(config['archived_sessions']) > MAX_ARCHIVED_SESSIONS:
-                        # Pop the oldest session from recent history (last item)
                         overflow_session = config['archived_sessions'].pop()
                         with st.spinner("📦 Migrating old chats to Deep Storage..."):
                             push_to_vault(overflow_session)
@@ -523,7 +429,6 @@ if config:
             
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
-                    # Dev Note: These personas change how the AI talks back.
                     p_map = {
                         "Standard Differential": "You are The Differential, a helpful and precise academic medical assistant.",
                         "Socratic Tutor": "You are a Socratic tutor. Never give the answer directly. Ask guiding questions to lead the user to the answer.",
@@ -533,12 +438,10 @@ if config:
                     selected_p = config.get('ai_persona', "Standard Differential")
                     persona_prompt = p_map.get(selected_p, p_map["Standard Differential"])
 
-                    # 🔧 FIX: Extracting variables to prevent f-string SyntaxError
                     active_units = ", ".join(config.get('current_units', []))
                     curr_diff = config.get('difficulty', 'Medium')
-                    recent_context = st.session_state.messages[-6:] # Keep memory short for token savings.
+                    recent_context = st.session_state.messages[-6:] 
 
-                    # 🛑 STOP-LOSS APPLIED: Taming the AI's tunnel vision 🛑
                     ctx = f"""
                     {persona_prompt}
                     Difficulty: {curr_diff}.
@@ -557,7 +460,6 @@ if config:
                         st.markdown(response_obj.text)
                         st.session_state.messages.append({"role": "assistant", "content": response_obj.text})
                         
-                        # --- TRAILING TITLE UPDATE ---
                         with st.spinner("Logging topic trend..."):
                             new_title = generate_dynamic_title(st.session_state.messages, st.session_state.active_chat_title)
                             st.session_state.active_chat_title = new_title
@@ -567,14 +469,12 @@ if config:
                         save_config(config)
                         st.session_state.config = config
                         
-                        # Sneaky rerun to update the title UI at the top instantly
                         st.rerun()
                     else:
                         st.error("⚠️ Connection Interrupted.")
 
-    # --- TAB 2: ARCHIVED SESSIONS (UPDATED WITH RESUME FEATURE) ---
+    # --- TAB 2: ARCHIVED SESSIONS ---
     with tab2:
-        # Dev Note: Displays the "Quick Access" history.
         st.subheader("🗂️ Recent History (RAM)")
         st.caption(f"Storing last {MAX_ARCHIVED_SESSIONS} sessions for quick access. Hit resume to jump back in.")
         
@@ -584,7 +484,6 @@ if config:
             st.info("No archives found. Start chatting to build history.")
         else:
             for i, session in enumerate(archives):
-                # We split it into 3 columns now so we have room for that Resume button
                 c_view, c_res, c_del = st.columns([5, 1, 1])
                 with c_view:
                     label = f"📅 {session['timestamp']} | 📝 {session['summary']}"
@@ -594,15 +493,10 @@ if config:
                             st.markdown(f"**{role_icon} {msg['role'].title()}:** {msg['content']}")
                             st.divider()
                 with c_res:
-                    # Dev Note: The Resume Button. Close the current trade, open the old one.
                     if st.button("▶️ Resume", key=f"res_sess_{i}", help="Resume this chat"):
-                        # 1. Secure the target chat we want to open
                         selected_session = config['archived_sessions'][i]
-                        
-                        # 2. Remove it from archives because it's about to become active
                         config['archived_sessions'].pop(i)
                         
-                        # 3. Bag up the CURRENT chat and put it into the archive (if it's not empty)
                         current_msgs = st.session_state.messages
                         if current_msgs:
                             summary = st.session_state.active_chat_title
@@ -615,16 +509,13 @@ if config:
                                 "summary": summary,
                                 "messages": current_msgs
                             }
-                            # Insert at the top of history
                             config['archived_sessions'].insert(0, session_archive)
                         
-                        # 4. Swap the active session to our selected one
                         st.session_state.messages = selected_session['messages']
                         config['active_session'] = selected_session['messages']
                         st.session_state.active_chat_title = selected_session['summary']
                         config['active_session_title'] = selected_session['summary']
                         
-                        # Manage overflow just in case the history gets too heavy
                         while len(config['archived_sessions']) > MAX_ARCHIVED_SESSIONS:
                             overflow_session = config['archived_sessions'].pop()
                             push_to_vault(overflow_session)
@@ -640,8 +531,6 @@ if config:
 
         st.divider()
         
-        # --- 🧊 DEEP STORAGE VAULT ---
-        # Dev Note: This pulls from the heavy vault file. Only open when needed to save data.
         st.markdown("### 🧊 Deep Archive (Vault)")
         if "show_vault" not in st.session_state: st.session_state.show_vault = False
 
@@ -657,7 +546,6 @@ if config:
             else:
                 st.caption(f"Vault Capacity: {len(vault_data)}/{MAX_VAULT_SESSIONS}")
                 for i, session in enumerate(vault_data):
-                    # Giving the vault the resume button too because why not flex? 💪
                     c_v_view, c_v_res, c_v_del = st.columns([5, 1, 1])
                     with c_v_view:
                         label = f"🧊 {session['timestamp']} | 📝 {session['summary']}"
@@ -669,7 +557,7 @@ if config:
                     with c_v_res:
                         if st.button("▶️ Resume", key=f"res_vault_{i}", help="Resume from Vault"):
                             selected_session = vault_data[i]
-                            vault_data.pop(i) # Pulling it out of deep freeze
+                            vault_data.pop(i) 
                             
                             current_msgs = st.session_state.messages
                             if current_msgs:
@@ -683,7 +571,6 @@ if config:
                                     "summary": summary,
                                     "messages": current_msgs
                                 }
-                                # Current chat goes to normal recent RAM, not the vault!
                                 config['archived_sessions'].insert(0, session_archive)
                                 
                             st.session_state.messages = selected_session['messages']
@@ -696,15 +583,13 @@ if config:
                             st.rerun()
 
                     with c_v_del:
-                        # Vault delete logic
                         if st.button("🗑️ Delete", key=f"del_vault_{i}", help="Delete from Vault permanently"):
                             vault_data.pop(i)
                             save_vault(vault_data, vault_sha)
                             st.rerun()
 
-    # --- TAB 3: CHAOS QUIZ GENERATOR (UPDATED) ---
+    # --- TAB 3: CHAOS QUIZ GENERATOR ---
     with tab3:
-        # Dev Note: Generates JSON questions. We use clean_text to strip the AI's markdown.
         st.subheader("📝 Generated Quiz")
         st.caption("Customize your chaos. Pick a target or let fate decide.")
         
@@ -751,7 +636,6 @@ if config:
                             st.error("AI returned silence.")
 
         with col_q2:
-            # Dev Note: Using st.form so the whole page doesn't refresh every time someone clicks a radio button.
             if 'quiz_data' in st.session_state:
                 st.info(f"**Unit:** {st.session_state['quiz_unit']} | **Questions:** {len(st.session_state['quiz_data'])}")
                 with st.form("quiz_form"):
@@ -775,7 +659,7 @@ if config:
                                 st.caption(f"ℹ️ {q['e']}")
                         
                         if 'quiz_history' not in config: config['quiz_history'] = []
-                        pnl = (score / total) * 100 # Profit and Loss? Nah, Progress and Learning.
+                        pnl = (score / total) * 100 
                         
                         config['quiz_history'].append({
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -794,7 +678,6 @@ if config:
 
     # --- TAB 4: STUDY PROGRESS ---
     with tab4:
-        # Dev Note: Using Pandas to turn history into a dataframe for quick math.
         st.subheader("📈 Academic Progress")
         history = config.get('quiz_history', [])
         
@@ -813,7 +696,7 @@ if config:
             m3.metric("Highest Score", f"{best_score:.1f}%")
             
             st.caption("Score History")
-            st.line_chart(df[['pnl']]) # Visualize the grind.
+            st.line_chart(df[['pnl']]) 
             
             st.divider()
             c1, c2 = st.columns(2)
@@ -832,7 +715,6 @@ if config:
                         st.write(f"**{unit}**: {score:.1f}%")
 
     with tab5:
-        # Dev Note: Inventory management. Keeps track of what units are available to study.
         col1, col2 = st.columns(2)
         with col1:
             inv = config.get('unit_inventory', {})
@@ -861,7 +743,6 @@ if config:
             else:
                 st.info("No units found in inventory.")
         with col2:
-            # Dev Note: Simple logic to drop units we're done with.
             for unit in config.get('current_units', []):
                 if st.checkbox(f"Drop {unit}", key=unit):
                     config['current_units'].remove(unit)
@@ -871,7 +752,6 @@ if config:
 
     # --- TAB 6: SETTINGS ---
     with tab6:
-        # Dev Note: Global settings. Changes here affect the persona and the visual vibes.
         st.subheader("⚙️ System Configuration")
         
         c1, c2 = st.columns(2)
@@ -913,7 +793,6 @@ if config:
             
         st.divider()
         
-        # Dev Note: This is the reset logic. Be careful here.
         with st.expander("⚠️ Danger Zone (Reset Data)", expanded=False):
             if st.button("🔥 Clear Quiz History (Reset Progress)"):
                 config['quiz_history'] = []
