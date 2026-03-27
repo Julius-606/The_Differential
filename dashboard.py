@@ -126,7 +126,7 @@ def rotate_key():
     st.toast(f"🔄 Swapped to Key #{st.session_state.key_index + 1}", icon="🔑")
     return True
 
-def ask_orbit(prompt):
+def ask_differential(prompt):
     global model
     # Retry loop: Try all keys + 1 extra attempt
     max_retries = len(GEMINI_API_KEYS) + 1
@@ -160,7 +160,8 @@ def ask_orbit(prompt):
     return None
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="Orbit Command Center", page_icon="🩺", layout="wide")
+# Update: Renamed the app and changed the icon to match the new vibes 👩‍⚕️
+st.set_page_config(page_title="The Differential", page_icon="👩‍⚕️", layout="wide")
 
 # --- ☁️ GITHUB INTEGRATION ---
 # Dev Note: This is where we handle cloud syncing. Keep it secret, keep it safe.
@@ -208,7 +209,7 @@ def load_config():
             "archived_sessions": [],
             "quiz_history": [],
             "interests": [],
-            "ai_persona": "Standard Orbit",
+            "ai_persona": "Standard Differential",
             "lock_background": False,
             "low_data_mode": False, 
             "unit_inventory": {"General": ["Math", "Science", "History", "Coding"]}
@@ -222,7 +223,7 @@ def save_config(new_config):
             contents = repo.get_contents("config.json")
             repo.update_file(
                 path=contents.path,
-                message="🤖 Orbit Session Sync",
+                message="🤖 The Differential Session Sync",
                 content=json.dumps(new_config, indent=4),
                 sha=contents.sha
             )
@@ -304,7 +305,7 @@ def push_to_vault(old_session):
         
     save_vault(vault, sha)
 
-st.title("🩺 Orbit: Your Personal Academic Weapon")
+st.title("👩‍⚕️ The Differential: Your med assistant")
 
 # Load config
 if 'config' not in st.session_state:
@@ -422,7 +423,7 @@ if config:
         for unit in config.get('current_units', []): st.caption(f"• {unit}")
 
     # Dev Note: Tab layout for the main content areas.
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["💬 Orbit Chat", "📜 History", "📝 Chaos Quiz", "📈 Progress", "📚 Manager", "⚙️ Settings"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["💬 The Differential Chat", "📜 History", "📝 Chaos Quiz", "📈 Progress", "📚 Manager", "⚙️ Settings"])
 
     # --- TAB 1: ACTIVE CHAT SESSION ---
     with tab1:
@@ -469,7 +470,7 @@ if config:
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-        if prompt := st.chat_input("Ask Orbit..."):
+        if prompt := st.chat_input("Ask The Differential..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.markdown(prompt)
             
@@ -477,17 +478,15 @@ if config:
                 with st.spinner("Thinking..."):
                     # Dev Note: These personas change how the AI talks back.
                     p_map = {
-                        "Standard Orbit": "You are Orbit, a helpful and precise academic assistant.",
+                        "Standard Differential": "You are The Differential, a helpful and precise academic medical assistant.",
                         "Socratic Tutor": "You are a Socratic tutor. Never give the answer directly. Ask guiding questions to lead the user to the answer.",
                         "Dr. House": "You are Dr. Gregory House. You are brilliant but sarcastic, grumpy, and slightly condescending. Use medical metaphors. Roast the user if they ask something obvious.",
                         "ELI5": "Explain like I'm 5 years old. Use simple analogies and easy language."
                     }
-                    selected_p = config.get('ai_persona', "Standard Orbit")
-                    persona_prompt = p_map.get(selected_p, p_map["Standard Orbit"])
+                    selected_p = config.get('ai_persona', "Standard Differential")
+                    persona_prompt = p_map.get(selected_p, p_map["Standard Differential"])
 
                     # 🔧 FIX: Extracting variables to prevent f-string SyntaxError
-                    # Python sometimes hiccups when you put complex logic inside f-string braces.
-                    # We're simplifying the leverage here.
                     active_units = ", ".join(config.get('current_units', []))
                     curr_diff = config.get('difficulty', 'Medium')
                     recent_context = st.session_state.messages[-6:] # Keep memory short for token savings.
@@ -505,7 +504,7 @@ if config:
                     Current Question: {prompt}
                     """
                     
-                    response_obj = ask_orbit(ctx)
+                    response_obj = ask_differential(ctx)
                     
                     if response_obj and response_obj.text:
                         st.markdown(response_obj.text)
@@ -517,11 +516,11 @@ if config:
                     else:
                         st.error("⚠️ Connection Interrupted.")
 
-    # --- TAB 2: ARCHIVED SESSIONS (UPDATED) ---
+    # --- TAB 2: ARCHIVED SESSIONS (UPDATED WITH RESUME FEATURE) ---
     with tab2:
         # Dev Note: Displays the "Quick Access" history.
         st.subheader("🗂️ Recent History (RAM)")
-        st.caption(f"Storing last {MAX_ARCHIVED_SESSIONS} sessions for quick access.")
+        st.caption(f"Storing last {MAX_ARCHIVED_SESSIONS} sessions for quick access. Hit resume to jump back in.")
         
         archives = config.get('archived_sessions', [])
         
@@ -529,16 +528,52 @@ if config:
             st.info("No archives found. Start chatting to build history.")
         else:
             for i, session in enumerate(archives):
-                c_view, c_del = st.columns([6, 1])
+                # We split it into 3 columns now so we have room for that Resume button
+                c_view, c_res, c_del = st.columns([5, 1, 1])
                 with c_view:
                     label = f"📅 {session['timestamp']} | 📝 {session['summary']}"
                     with st.expander(label, expanded=False):
                         for msg in session['messages']:
-                            role_icon = "👤" if msg['role'] == "user" else "🩺"
+                            role_icon = "👤" if msg['role'] == "user" else "👩‍⚕️"
                             st.markdown(f"**{role_icon} {msg['role'].title()}:** {msg['content']}")
                             st.divider()
+                with c_res:
+                    # Dev Note: The Resume Button. Close the current trade, open the old one.
+                    if st.button("▶️ Resume", key=f"res_sess_{i}", help="Resume this chat"):
+                        # 1. Secure the target chat we want to open
+                        selected_session = config['archived_sessions'][i]
+                        
+                        # 2. Remove it from archives because it's about to become active
+                        config['archived_sessions'].pop(i)
+                        
+                        # 3. Bag up the CURRENT chat and put it into the archive (if it's not empty)
+                        current_msgs = st.session_state.messages
+                        if current_msgs:
+                            first_user_msg = next((m['content'] for m in current_msgs if m['role'] == 'user'), "Empty Session")
+                            summary = (first_user_msg[:40] + '...') if len(first_user_msg) > 40 else first_user_msg
+                            
+                            session_archive = {
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                "summary": summary,
+                                "messages": current_msgs
+                            }
+                            # Insert at the top of history
+                            config['archived_sessions'].insert(0, session_archive)
+                        
+                        # 4. Swap the active session to our selected one
+                        st.session_state.messages = selected_session['messages']
+                        config['active_session'] = selected_session['messages']
+                        
+                        # Manage overflow just in case the history gets too heavy
+                        while len(config['archived_sessions']) > MAX_ARCHIVED_SESSIONS:
+                            overflow_session = config['archived_sessions'].pop()
+                            push_to_vault(overflow_session)
+                            
+                        save_config(config)
+                        st.rerun()
+
                 with c_del:
-                    if st.button("🗑️", key=f"del_sess_{i}", help="Delete this session"):
+                    if st.button("🗑️ Delete", key=f"del_sess_{i}", help="Delete this session"):
                         config['archived_sessions'].pop(i)
                         save_config(config)
                         st.rerun()
@@ -562,18 +597,43 @@ if config:
             else:
                 st.caption(f"Vault Capacity: {len(vault_data)}/{MAX_VAULT_SESSIONS}")
                 for i, session in enumerate(vault_data):
-                    c_v_view, c_v_del = st.columns([6, 1])
+                    # Giving the vault the resume button too because why not flex? 💪
+                    c_v_view, c_v_res, c_v_del = st.columns([5, 1, 1])
                     with c_v_view:
-                        # Slightly different icon for vault items
                         label = f"🧊 {session['timestamp']} | 📝 {session['summary']}"
                         with st.expander(label, expanded=False):
                             for msg in session['messages']:
-                                role_icon = "👤" if msg['role'] == "user" else "🩺"
+                                role_icon = "👤" if msg['role'] == "user" else "👩‍⚕️"
                                 st.markdown(f"**{role_icon} {msg['role'].title()}:** {msg['content']}")
                                 st.divider()
+                    with c_v_res:
+                        if st.button("▶️ Resume", key=f"res_vault_{i}", help="Resume from Vault"):
+                            selected_session = vault_data[i]
+                            vault_data.pop(i) # Pulling it out of deep freeze
+                            
+                            current_msgs = st.session_state.messages
+                            if current_msgs:
+                                first_user_msg = next((m['content'] for m in current_msgs if m['role'] == 'user'), "Empty Session")
+                                summary = (first_user_msg[:40] + '...') if len(first_user_msg) > 40 else first_user_msg
+                                
+                                session_archive = {
+                                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                    "summary": summary,
+                                    "messages": current_msgs
+                                }
+                                # Current chat goes to normal recent RAM, not the vault!
+                                config['archived_sessions'].insert(0, session_archive)
+                                
+                            st.session_state.messages = selected_session['messages']
+                            config['active_session'] = selected_session['messages']
+                            
+                            save_vault(vault_data, vault_sha)
+                            save_config(config)
+                            st.rerun()
+
                     with c_v_del:
                         # Vault delete logic
-                        if st.button("🗑️", key=f"del_vault_{i}", help="Delete from Vault permanently"):
+                        if st.button("🗑️ Delete", key=f"del_vault_{i}", help="Delete from Vault permanently"):
                             vault_data.pop(i)
                             save_vault(vault_data, vault_sha)
                             st.rerun()
@@ -611,7 +671,7 @@ if config:
                         Return ONLY a raw JSON list of objects. No markdown.
                         Format: [{{"q": "...", "o": ["A", "B"], "a": "A", "e": "..."}}]
                         """
-                        response = ask_orbit(q_prompt)
+                        response = ask_differential(q_prompt)
                         
                         if response and response.text:
                             try:
@@ -754,8 +814,8 @@ if config:
         
         with c1:
             st.markdown("### 🧠 AI Personality")
-            personas = ["Standard Orbit", "Socratic Tutor", "Dr. House", "ELI5"]
-            curr_p = config.get('ai_persona', "Standard Orbit")
+            personas = ["Standard Differential", "Socratic Tutor", "Dr. House", "ELI5"]
+            curr_p = config.get('ai_persona', "Standard Differential")
             idx_p = personas.index(curr_p) if curr_p in personas else 0
             new_p = st.selectbox("Select Interaction Model", personas, index=idx_p)
             if new_p != curr_p:
