@@ -213,19 +213,20 @@ def load_config():
     g, repo = get_github_session()
     if repo:
         try:
-            contents = repo.get_contents("config.json")
+            contents = repo.get_contents("differential_config.json")
             decoded = contents.decoded_content.decode()
             return json.loads(decoded)
-        except Exception as e:
-            st.warning(f"⚠️ Cloud load failed ({e}). Checking local...")
+        except Exception:
+            # File might not exist yet, that's chill
+            pass
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(script_dir, 'config.json')
+    config_path = os.path.join(script_dir, 'differential_config.json')
     try:
         with open(config_path, 'r') as f: return json.load(f)
     except FileNotFoundError:
         return {
-            "user_name": "Future Doc",
+            "user_name": "Julius",
             "difficulty": "Medium (Standard)",
             "current_units": [],
             "active_session": [],
@@ -244,20 +245,29 @@ def save_config(new_config):
     g, repo = get_github_session()
     if repo:
         try:
-            contents = repo.get_contents("config.json")
-            repo.update_file(
-                path=contents.path,
-                message="🤖 The Differential Session Sync",
-                content=json.dumps(new_config, indent=4),
-                sha=contents.sha
-            )
+            # Try to update an existing file first
+            try:
+                contents = repo.get_contents("differential_config.json")
+                repo.update_file(
+                    path=contents.path,
+                    message="🤖 The Differential Session Sync",
+                    content=json.dumps(new_config, indent=4),
+                    sha=contents.sha
+                )
+            except Exception:
+                # If it 404s because the repo is fresh, we CREATE instead of crashing!
+                repo.create_file(
+                    path="differential_config.json",
+                    message="🤖 Init The Differential Config",
+                    content=json.dumps(new_config, indent=4)
+                )
             return True
         except Exception as e:
             st.error(f"❌ Cloud Save Failed: {e}")
             return False
     else:
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(script_dir, 'config.json')
+        config_path = os.path.join(script_dir, 'differential_config.json')
         with open(config_path, 'w') as f: json.dump(new_config, f, indent=4)
         return True
 
@@ -268,7 +278,7 @@ def load_vault():
     g, repo = get_github_session()
     if repo:
         try:
-            contents = repo.get_contents("archive_vault.json")
+            contents = repo.get_contents("differential_vault.json")
             decoded = contents.decoded_content.decode()
             return json.loads(decoded), contents.sha # Return SHA for updates
         except Exception:
@@ -277,7 +287,7 @@ def load_vault():
     
     # Local fallback
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    vault_path = os.path.join(script_dir, 'archive_vault.json')
+    vault_path = os.path.join(script_dir, 'differential_vault.json')
     try:
         with open(vault_path, 'r') as f: return json.load(f), None
     except FileNotFoundError:
@@ -289,18 +299,19 @@ def save_vault(vault_data, sha=None):
     g, repo = get_github_session()
     if repo:
         try:
-            # If SHA exists, update. If not, create.
-            if sha:
-                contents = repo.get_contents("archive_vault.json") # Re-fetch to be safe
+            try:
+                # Force check if it exists just to be extra safe
+                contents = repo.get_contents("differential_vault.json")
                 repo.update_file(
-                    path="archive_vault.json",
+                    path="differential_vault.json",
                     message="🧊 Deep Freeze Archive Update",
                     content=json.dumps(vault_data, indent=4),
                     sha=contents.sha
                 )
-            else:
+            except Exception:
+                # Create it if it wasn't found (the 404 fix)
                 repo.create_file(
-                    path="archive_vault.json",
+                    path="differential_vault.json",
                     message="🧊 Init Deep Freeze",
                     content=json.dumps(vault_data, indent=4)
                 )
@@ -311,7 +322,7 @@ def save_vault(vault_data, sha=None):
     else:
         # Local
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        vault_path = os.path.join(script_dir, 'archive_vault.json')
+        vault_path = os.path.join(script_dir, 'differential_vault.json')
         with open(vault_path, 'w') as f: json.dump(vault_data, f, indent=4)
         return True
 
@@ -435,7 +446,7 @@ if config:
 
     with st.sidebar:
         st.header("👤 Commander Profile")
-        st.text_input("Username", value=config.get('user_name', 'Future Doc'), disabled=True)
+        st.text_input("Username", value=config.get('user_name', 'Julius'), disabled=True)
         st.divider()
         # Dev Note: Difficulty levels. "Asian Parent" is the boss level.
         diffs = ["Easy (Review)", "Medium (Standard)", "Hard (Exam Prep)", "Asian Parent Expectations (Extreme)"]
