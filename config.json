@@ -137,18 +137,23 @@
         ""
     ],
     "quiz_history": [],
-    "active_session_title": "Community Health",
-    "active_session": [
-        {
-            "role": "user",
-            "content": "Today, let's discuss community health."
-        },
-        {
-            "role": "assistant",
-            "content": "Excellent choice. In the realm of professional medical examinations, **Community Health** transitions from basic sociology to rigorous **Epidemiology, Biostatistics, and Health Systems Management.** \n\nTo get us started at an exam-prep level, we should categorize our focus. In high-stakes exams (like the USMLE Step 2/3, PLAB, or final MBChB/MD finals), Community Health typically tests your ability to interpret population data and apply preventative frameworks.\n\nWhich of these high-yield pillars would you like to dive into first?\n\n### 1. Epidemiology and Study Design\nThis is the \"bread and butter\" of the boards. We can discuss:\n*   **The Hierarchy of Evidence:** Navigating the nuances between Prospective Cohort studies and Case-Control studies (including how to calculate Odds Ratios vs. Relative Risk).\n*   **Bias and Confounding:** Identifying Selection Bias, Lead-time Bias, and the Hawthorne Effect in clinical vignettes.\n\n### 2. Screening and Diagnostic Testing\nThis focuses on the validity of tests within a community:\n*   **Sensitivity vs. Specificity:** Understanding how changing a \"cut-off\" point affects Type I and Type II errors.\n*   **Predictive Values:** How shifting **prevalence** in a community affects Positive Predictive Value (PPV) and Negative Predictive Value (NPV).\n\n### 3. Levels of Prevention\nApplying the framework to clinical scenarios:\n*   **Primordial/Primary:** Altering risk factors before disease onset.\n*   **Secondary:** Early detection (screening).\n*   **Tertiary/Quaternary:** Limiting disability or preventing over-medicalization.\n\n### 4. Healthcare Economics and Global Health\n*   **Health Indicators:** Calculating Neonatal vs. Infant mortality rates.\n*   **Financing:** Comparing Single-payer vs. Multi-payer systems and the concepts of \"Value-based Care.\"\n\n---\n\n**To kick things off, here is a quick \"Hard\" level warm-up question:**\n\n*A new screening test for a rare asymptomatic vascular condition is introduced to a city of 1,000,000 people. The disease has a prevalence of 1%. The test has a sensitivity of 90% and a specificity of 90%.*\n\n**If a patient in this community tests positive, what is the probability that they actually have the disease?** (Hint: We are looking for the PPV).\n\nHow would you like to proceed? We can solve this, or you can pick a specific pillar from the list above."
-        }
-    ],
+    "active_session_title": "New Session",
+    "active_session": [],
     "archived_sessions": [
+        {
+            "timestamp": "2026-03-31 04:54",
+            "summary": "Community Health",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Today, let's discuss community health."
+                },
+                {
+                    "role": "assistant",
+                    "content": "Excellent choice. In the realm of professional medical examinations, **Community Health** transitions from basic sociology to rigorous **Epidemiology, Biostatistics, and Health Systems Management.** \n\nTo get us started at an exam-prep level, we should categorize our focus. In high-stakes exams (like the USMLE Step 2/3, PLAB, or final MBChB/MD finals), Community Health typically tests your ability to interpret population data and apply preventative frameworks.\n\nWhich of these high-yield pillars would you like to dive into first?\n\n### 1. Epidemiology and Study Design\nThis is the \"bread and butter\" of the boards. We can discuss:\n*   **The Hierarchy of Evidence:** Navigating the nuances between Prospective Cohort studies and Case-Control studies (including how to calculate Odds Ratios vs. Relative Risk).\n*   **Bias and Confounding:** Identifying Selection Bias, Lead-time Bias, and the Hawthorne Effect in clinical vignettes.\n\n### 2. Screening and Diagnostic Testing\nThis focuses on the validity of tests within a community:\n*   **Sensitivity vs. Specificity:** Understanding how changing a \"cut-off\" point affects Type I and Type II errors.\n*   **Predictive Values:** How shifting **prevalence** in a community affects Positive Predictive Value (PPV) and Negative Predictive Value (NPV).\n\n### 3. Levels of Prevention\nApplying the framework to clinical scenarios:\n*   **Primordial/Primary:** Altering risk factors before disease onset.\n*   **Secondary:** Early detection (screening).\n*   **Tertiary/Quaternary:** Limiting disability or preventing over-medicalization.\n\n### 4. Healthcare Economics and Global Health\n*   **Health Indicators:** Calculating Neonatal vs. Infant mortality rates.\n*   **Financing:** Comparing Single-payer vs. Multi-payer systems and the concepts of \"Value-based Care.\"\n\n---\n\n**To kick things off, here is a quick \"Hard\" level warm-up question:**\n\n*A new screening test for a rare asymptomatic vascular condition is introduced to a city of 1,000,000 people. The disease has a prevalence of 1%. The test has a sensitivity of 90% and a specificity of 90%.*\n\n**If a patient in this community tests positive, what is the probability that they actually have the disease?** (Hint: We are looking for the PPV).\n\nHow would you like to proceed? We can solve this, or you can pick a specific pillar from the list above."
+                }
+            ]
+        },
         {
             "timestamp": "2026-03-31 04:43",
             "summary": "Ocular Pathology",
