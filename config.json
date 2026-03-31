@@ -136,7 +136,15 @@
         "New technologies in the medical field",
         ""
     ],
-    "quiz_history": [],
+    "quiz_history": [
+        {
+            "timestamp": "2026-03-31 05:39",
+            "unit": "Community Health",
+            "score": 3,
+            "total": 8,
+            "pnl": 37.5
+        }
+    ],
     "active_session_title": "Community Health",
     "active_session": [
         {
