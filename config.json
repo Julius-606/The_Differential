@@ -3,7 +3,7 @@
     "semester_status": "Year 4 - Redemption Arc",
     "ai_persona": "Standard Differential",
     "difficulty": "Hard (Exam Prep)",
-    "lock_background": false,
+    "lock_background": true,
     "low_data_mode": false,
     "current_units": [
         "Biochemistry II",
