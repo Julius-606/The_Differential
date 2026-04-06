@@ -150,6 +150,13 @@
             "score": 1,
             "total": 1,
             "pnl": 100.0
+        },
+        {
+            "timestamp": "2026-04-06 10:30",
+            "unit": "Anatomy of the abdomen and thorax",
+            "score": 1,
+            "total": 1,
+            "pnl": 100.0
         }
     ],
     "active_session_title": "Superior Mesenteric Artery Syndrome",
