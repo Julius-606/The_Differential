@@ -159,18 +159,23 @@
             "pnl": 100.0
         }
     ],
-    "active_session_title": "Superior Mesenteric Artery Syndrome",
-    "active_session": [
-        {
-            "role": "user",
-            "content": "Structure around the third part of the Abdomen that would be at risk of compression at a specific narrow angle."
-        },
-        {
-            "role": "assistant",
-            "content": "The structure at risk of compression is the **third (horizontal) part of the duodenum**.\n\nIn a clinical and anatomical context, this occurs within the narrow angle formed between the **Abdominal Aorta** and the **Superior Mesenteric Artery (SMA)**. This condition is known as **Superior Mesenteric Artery Syndrome** (or Wilkie's Syndrome).\n\n### Anatomical Precision for Exam Prep:\n\n1.  **The \"Narrow Angle\":** Under normal conditions, the SMA branches from the abdominal aorta at an angle of approximately **38\u00b0 to 65\u00b0**. Within this space lies the third part of the duodenum, the left renal vein, and the uncinate process of the pancreas.\n2.  **The Mechanism of Compression:** If this angle narrows to less than **25\u00b0** (or if the aortomesenteric distance decreases to less than 8\u201310 mm), the SMA effectively \"nutcrackers\" the third part of the duodenum against the aorta.\n3.  **Predisposing Factors:** This is often caused by the loss of the **retroperitoneal fat pad** (which normally buffers the artery away from the duodenum). Common triggers include:\n    *   Rapid, extreme weight loss (e.g., eating disorders, malabsorption).\n    *   Corrective spinal surgery for scoliosis (which elongates the spine and narrows the angle).\n    *   Application of a \"body cast\" (Body Cast Syndrome).\n4.  **Clinical Presentation:** Patients typically present with symptoms of proximal small bowel obstruction: postprandial abdominal pain, nausea, and voluminous vomiting of partially digested food.\n\n***\n\n**Differential Note:** Do not confuse this with **Nutcracker Syndrome**, which involves the compression of the **left renal vein** in the same aortomesenteric angle, typically presenting with hematuria and left-sided flank pain rather than gastrointestinal obstruction."
-        }
-    ],
+    "active_session_title": "New Session",
+    "active_session": [],
     "archived_sessions": [
+        {
+            "timestamp": "2026-04-06 10:32",
+            "summary": "Superior Mesenteric Artery Syndrome",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Structure around the third part of the Abdomen that would be at risk of compression at a specific narrow angle."
+                },
+                {
+                    "role": "assistant",
+                    "content": "The structure at risk of compression is the **third (horizontal) part of the duodenum**.\n\nIn a clinical and anatomical context, this occurs within the narrow angle formed between the **Abdominal Aorta** and the **Superior Mesenteric Artery (SMA)**. This condition is known as **Superior Mesenteric Artery Syndrome** (or Wilkie's Syndrome).\n\n### Anatomical Precision for Exam Prep:\n\n1.  **The \"Narrow Angle\":** Under normal conditions, the SMA branches from the abdominal aorta at an angle of approximately **38\u00b0 to 65\u00b0**. Within this space lies the third part of the duodenum, the left renal vein, and the uncinate process of the pancreas.\n2.  **The Mechanism of Compression:** If this angle narrows to less than **25\u00b0** (or if the aortomesenteric distance decreases to less than 8\u201310 mm), the SMA effectively \"nutcrackers\" the third part of the duodenum against the aorta.\n3.  **Predisposing Factors:** This is often caused by the loss of the **retroperitoneal fat pad** (which normally buffers the artery away from the duodenum). Common triggers include:\n    *   Rapid, extreme weight loss (e.g., eating disorders, malabsorption).\n    *   Corrective spinal surgery for scoliosis (which elongates the spine and narrows the angle).\n    *   Application of a \"body cast\" (Body Cast Syndrome).\n4.  **Clinical Presentation:** Patients typically present with symptoms of proximal small bowel obstruction: postprandial abdominal pain, nausea, and voluminous vomiting of partially digested food.\n\n***\n\n**Differential Note:** Do not confuse this with **Nutcracker Syndrome**, which involves the compression of the **left renal vein** in the same aortomesenteric angle, typically presenting with hematuria and left-sided flank pain rather than gastrointestinal obstruction."
+                }
+            ]
+        },
         {
             "timestamp": "2026-04-06 10:23",
             "summary": "Abdominal Vascular Anatomy",
