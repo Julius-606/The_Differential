@@ -4,7 +4,7 @@
     "ai_persona": "Standard Differential",
     "difficulty": "Hard (Exam Prep)",
     "lock_background": true,
-    "low_data_mode": false,
+    "low_data_mode": true,
     "current_units": [
         "Biochemistry II",
         "Community Health",
