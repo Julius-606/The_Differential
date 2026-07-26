@@ -5,7 +5,11 @@
     "difficulty": "Hard (Exam Prep)",
     "lock_background": true,
     "low_data_mode": false,
-    "current_units": [],
+    "current_units": [
+        "Immunology",
+        "General Pathology I",
+        "Embryology"
+    ],
     "unit_inventory": {
         "Year 1": {
             "Semester 1": [
