@@ -142,7 +142,7 @@ st.set_page_config(page_title="The Differential", page_icon="👩‍⚕️", lay
 def get_github_session():
     if Github is None:
         return None, None
-    token = st.secrets.get("GITHUB_TOKEN") or st.secrets.get("GITHUB_KEYS")
+    token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
     
     if not token or not repo_name:
