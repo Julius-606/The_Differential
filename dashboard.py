@@ -615,7 +615,7 @@ if config:
                         num_questions = random.randint(1, 10)
                         
                         q_prompt = f"""
-                        Generate {num_questions} multiple-choice questions about {target_unit}{focus_text} for a 4th Year Student.
+                        Generate {num_questions} multiple-choice questions about {target_unit}{focus_text} for a 2nd Year Student, make the questions relevant to the course BSC in Clinical Medicine and Surgery.
                         Difficulty: {config['difficulty']}.
                         Return ONLY a raw JSON list of objects. No markdown.
                         Format: [{{"q": "...", "o": ["A", "B"], "a": "A", "e": "..."}}]

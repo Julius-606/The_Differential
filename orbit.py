@@ -272,7 +272,7 @@ async def send_chaos():
         await broadcast_message(bot, f"🚨 <b>{quote}</b>\n\nIncoming Rapid Fire: <b>{num_q} Questions on {unit}</b>")
         
         prompt = f"""
-        Generate {num_q} multiple-choice questions about {unit} for a 4th Year Student.
+        Generate {num_q} multiple-choice questions about {unit} for a 2nd Year Student, make the questions relevant to the course BSC in Clinical Medicine and Surgery.
         Strict JSON format: Return a LIST of objects.
         [ {{"question": "...", "options": ["A","B","C","D"], "correct_id": 0, "explanation": "..."}} ]
         Limits: Question < 250 chars, Options < 100 chars.
