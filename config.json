@@ -153,6 +153,13 @@
             "score": 1,
             "total": 1,
             "pnl": 100.0
+        },
+        {
+            "timestamp": "2026-08-02 12:46",
+            "unit": "Internal Medicine II",
+            "score": 3,
+            "total": 5,
+            "pnl": 60.0
         }
     ],
     "active_session_title": "New Session",
