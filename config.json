@@ -162,8 +162,17 @@
             "pnl": 60.0
         }
     ],
-    "active_session_title": "New Session",
-    "active_session": [],
+    "active_session_title": "General Pathology Recall Quiz",
+    "active_session": [
+        {
+            "role": "user",
+            "content": "Give me a recall quiz on General Pathology."
+        },
+        {
+            "role": "assistant",
+            "content": "Welcome! I am **The Differential**. Here is a 5-question recall quiz on **General Pathology** designed at a standard (medium) difficulty level to test core concepts in cellular pathology, inflammation, repair, hemodynamics, and neoplasia.\n\n---\n\n### **General Pathology Recall Quiz**\n\n#### **Question 1: Cellular Injury & Adaptations**\nA 62-year-old male with a history of severe hypercalcemia secondary to hyperparathyroidism develops calcium deposits in previously healthy lung tissue and kidney parenchyma. \n* **Question:** What type of calcification is this (Dystrophic vs. Metastatic), and what are the characteristic serum calcium/phosphate levels associated with it compared to the alternative form?\n\n#### **Question 2: Acute & Chronic Inflammation**\nDuring the acute inflammatory response, leukocyte extravasation involves several steps: margination, rolling, adhesion, transmigration (diapedesis), and migration.\n* **Question:** Which specific class of adhesion molecules expressed on endothelial cells (and upregulated by TNF and IL-1) binds to **integrins** (such as LFA-1/MAC-1) on leukocytes to mediate *firm adhesion*?\n\n#### **Question 3: Tissue Repair & Wound Healing**\n* **Question:** Which major cytokine is considered the single most important growth factor involved in driving tissue **fibrosis** and scar formation by stimulating fibroblast migration, proliferation, and collagen synthesis?\n\n#### **Question 4: Hemodynamics & Thrombosis**\nVirchow\u2019s triad describes the three primary broad categories of factors contributing to thrombosis.\n* **Question:** What are the three components of Virchow's triad, and which component is the most critical driver for arterial/cardiac thrombus formation?\n\n#### **Question 5: Neoplasia**\n* **Question:** Which tumor suppressor protein, often referred to as the \"guardian of the genome,\" regulates the G1/S cell cycle checkpoint by inducing cell cycle arrest via p21 or triggering apoptosis in response to unrepairable DNA damage?\n\n---\n\n### **Instructions:**\nWrite down your answers for Questions 1 through 5 and reply when you are ready! I will evaluate your answers, provide the correct solutions, and offer detailed explanations for each."
+        }
+    ],
     "archived_sessions": [
         {
             "timestamp": "2026-08-02 12:25",
